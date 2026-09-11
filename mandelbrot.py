@@ -18,7 +18,9 @@ import math
 
 import numpy as np
 from PIL import Image
-from matplotlib import pyplot as plt
+
+# from matplotlib import pyplot as plt
+from numba import njit
 
 
 class Mandelbrot:
@@ -106,8 +108,9 @@ class Mandelbrot:
 
 
 if __name__ == "__main__":
-    mandelbrot = Mandelbrot(600, 600, 100)
+    mandelbrot = Mandelbrot(1024, 1024, 100)
     img = mandelbrot.generate_image((-2, -1.5, 1, 1.5))
-    img.save("mandelbrot.png", "PNG")
-    plt.imshow(img, interpolation="bilinear")
-    plt.show()
+    # img.save("mandelbrot.png", "PNG")
+    # plt.imshow(img, interpolation="bilinear")
+    # plt.show()
+    img.show()
