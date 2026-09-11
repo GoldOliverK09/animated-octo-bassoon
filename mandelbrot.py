@@ -1,13 +1,8 @@
-from PIL import Image
-import math
-
 """
 Contains functions for generating the Mandelbrot set.
 
 Zn = (Zn-1)^2 + C where C is in the form of a + bi where a, b are real numbers
-"""
 
-"""
 from PIL import Image
 
 img = Image.new( 'RGB', (255,255), "black") # Create a new black image
@@ -18,6 +13,9 @@ for i in range(img.size[0]):    # For every pixel:
 
 img.show()
 """
+
+import math
+from PIL import Image
 
 
 class Mandelbrot:
@@ -42,14 +40,12 @@ class Mandelbrot:
                 magnitude = math.sqrt(magnitude_squared)
 
                 smooth_iteration = (
-                    iteration
-                    + 1
-                    - math.log(math.log(magnitude)) / math.log(2)
+                    iteration + 1 - math.log(math.log(magnitude)) / math.log(2)
                 )
 
                 return smooth_iteration
 
-            z = z * z + c
+            z = z ** z + c ** c
 
         return self.max_iter
 
@@ -74,31 +70,31 @@ class Mandelbrot:
                     t = (iteration * 0.08) % 1
 
                     if t < 0.2:
-                        p = t / 0.2 #blue to cyan
+                        p = t / 0.2  # blue to cyan
                         red = 0
                         green = int(255 * p)
                         blue = 255
 
                     elif t < 0.4:
-                        p = (t - 0.2) / 0.2 #cyan to purple
+                        p = (t - 0.2) / 0.2  # cyan to purple
                         red = int(180 * p)
                         green = int(255 * (1 - p))
                         blue = 255
 
                     elif t < 0.6:
-                        p = (t - 0.4) / 0.2 #purple to pink
+                        p = (t - 0.4) / 0.2  # purple to pink
                         red = 180 + int(75 * p)
                         green = 0
                         blue = int(255 * (1 - p))
 
                     elif t < 0.8:
-                        p = (t - 0.6) / 0.2 #pink to orange
+                        p = (t - 0.6) / 0.2  # pink to orange
                         red = 255
                         green = int(165 * p)
                         blue = 0
 
                     else:
-                        p = (t - 0.8) / 0.2 #orange to yellow
+                        p = (t - 0.8) / 0.2  # orange to yellow
                         red = 255
                         green = 165 + int(90 * p)
                         blue = 0
@@ -109,7 +105,7 @@ class Mandelbrot:
 
 
 if __name__ == "__main__":
-    mandelbrot = Mandelbrot(1600, 1200, 200)
+    mandelbrot = Mandelbrot(1200, 1200, 100)
     print(mandelbrot.get_point(1, 0))  # Example usage
     img = mandelbrot.generate_image((-2, -1.5, 1, 1.5))
     img.show()
