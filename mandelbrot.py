@@ -15,6 +15,8 @@ img.show()
 """
 
 import math
+
+import numpy as np
 from PIL import Image
 
 
@@ -45,67 +47,62 @@ class Mandelbrot:
 
                 return smooth_iteration
 
-            z = z ** z + c ** c
+            z = z**2 + c
 
         return self.max_iter
 
-    def generate_image(self, bounds: tuple[float, float, float, float]) -> Image:
+    def generate_image(self, bounds: tuple[float, float, float, float]) -> Image.Image:
         """Generates an image of the Mandelbrot set within the given bounds."""
 
-        img = Image.new("RGB", (self.width, self.height), "black")
-        pixels = img.load()
+        x = bounds[0] + (np.arange(self.width) / self.width) * (bounds[2] - bounds[0])
+        y = bounds[1] + (np.arange(self.height) / self.height) * (bounds[3] - bounds[1])
+        c = x[np.newaxis, :] + 1j * y[:, np.newaxis]
+        z = np.zeros_like(c)
+        iterations = np.full(c.shape, self.max_iter, dtype=float)
+        active = np.ones(c.shape, dtype=bool)
 
-        for i in range(self.width):
-            for j in range(self.height):
+        for iteration in range(self.max_iter):
+            magnitude_squared = z.real * z.real + z.imag * z.imag
+            escaped = active & (magnitude_squared > 4)
 
-                x = bounds[0] + (i / self.width) * (bounds[2] - bounds[0])
-                y = bounds[1] + (j / self.height) * (bounds[3] - bounds[1])
+            if escaped.any():
+                magnitude = np.sqrt(magnitude_squared[escaped])
+                iterations[escaped] = (
+                    iteration + 1 - np.log(np.log(magnitude)) / np.log(2)
+                )
+                active[escaped] = False
 
-                iteration = self.get_point(x, y)
+            if not active.any():
+                break
 
-                if iteration == self.max_iter:
-                    pixels[i, j] = (0, 0, 0)  # Points that didnt escape are black
+            z[active] = z[active] ** 2 + c[active]
 
-                else:
-                    t = (iteration * 0.08) % 1
+        colours = np.array(
+            (
+                (0, 0, 255),
+                (0, 255, 255),
+                (180, 0, 255),
+                (255, 0, 0),
+                (255, 165, 0),
+                (255, 255, 0),
+            )
+        )
+        escaped = iterations != self.max_iter
+        t = (iterations[escaped] * 0.08) % 1
+        position = t * (len(colours) - 1)
+        start = position.astype(int)
+        blend = position - start
+        pixels = np.zeros((*c.shape, 3), dtype=np.uint8)
+        pixels[escaped] = (
+            colours[start]
+            + (colours[np.minimum(start + 1, len(colours) - 1)] - colours[start])
+            * blend[:, None]
+        ).astype(np.uint8)
 
-                    if t < 0.2:
-                        p = t / 0.2  # blue to cyan
-                        red = 0
-                        green = int(255 * p)
-                        blue = 255
-
-                    elif t < 0.4:
-                        p = (t - 0.2) / 0.2  # cyan to purple
-                        red = int(180 * p)
-                        green = int(255 * (1 - p))
-                        blue = 255
-
-                    elif t < 0.6:
-                        p = (t - 0.4) / 0.2  # purple to pink
-                        red = 180 + int(75 * p)
-                        green = 0
-                        blue = int(255 * (1 - p))
-
-                    elif t < 0.8:
-                        p = (t - 0.6) / 0.2  # pink to orange
-                        red = 255
-                        green = int(165 * p)
-                        blue = 0
-
-                    else:
-                        p = (t - 0.8) / 0.2  # orange to yellow
-                        red = 255
-                        green = 165 + int(90 * p)
-                        blue = 0
-
-                    pixels[i, j] = (red, green, blue)
-
-        return img
+        return Image.fromarray(pixels, mode="RGB")
 
 
 if __name__ == "__main__":
     mandelbrot = Mandelbrot(1200, 1200, 100)
-    print(mandelbrot.get_point(1, 0))  # Example usage
     img = mandelbrot.generate_image((-2, -1.5, 1, 1.5))
     img.show()
