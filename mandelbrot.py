@@ -18,6 +18,7 @@ import math
 
 import numpy as np
 from PIL import Image
+from matplotlib import pyplot as plt
 
 
 class Mandelbrot:
@@ -75,6 +76,8 @@ class Mandelbrot:
             if not active.any():
                 break
 
+            print("Iteration:", iteration, "Active points:", np.sum(active))
+
             z[active] = z[active] ** 2 + c[active]
 
         colours = np.array(
@@ -103,6 +106,8 @@ class Mandelbrot:
 
 
 if __name__ == "__main__":
-    mandelbrot = Mandelbrot(1200, 1200, 100)
+    mandelbrot = Mandelbrot(600, 600, 100)
     img = mandelbrot.generate_image((-2, -1.5, 1, 1.5))
-    img.show()
+    img.save("mandelbrot.png", "PNG")
+    plt.imshow(img, interpolation="bilinear")
+    plt.show()
