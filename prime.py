@@ -35,7 +35,7 @@ def generate_spiral(count):
 if __name__ == "__main__":
 
     point_count = 500_000
-    initial_view_radius = 50
+    initial_view_radius = 500
     all_coordinates = []
     prime_coordinates = []
 

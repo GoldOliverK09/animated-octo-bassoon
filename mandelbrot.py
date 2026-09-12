@@ -83,6 +83,7 @@ class Mandelbrot:
         )
         palette = np.array(
             [
+                (0, 0, 128),
                 (0, 0, 255),
                 (0, 255, 255),
                 (180, 0, 255),
