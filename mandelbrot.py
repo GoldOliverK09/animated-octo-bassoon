@@ -11,22 +11,27 @@ import math
 import numpy as np
 
 from PIL import Image
-from numba import njit, prange
+from numba import jit, prange
 
 
-@njit(parallel=True, cache=True)
-def calculate_mandelbrot(width, height, max_iter, bounds):
-    x_min, y_min, x_max, y_max = bounds
+@jit(parallel=True, cache=True)
+def calculate_mandelbrot(
+    image_width: int,
+    image_height: int,
+    max_iter: int,
+    bounds: tuple,
+) -> np.ndarray:
+    left, top, view_width, view_height = bounds
 
-    iterations = np.full((height, width), max_iter, dtype=np.float64)
+    iterations = np.full((image_height, image_width), max_iter, dtype=np.float64)
 
-    x_values = np.linspace(x_min, x_max, width)
-    y_values = np.linspace(y_min, y_max, height)
+    x_values = np.linspace(left, left + view_width, image_width)
+    y_values = np.linspace(top, top - view_height, image_height)
 
-    for py in prange(height):  # pylint: disable=not-an-iterable
+    for py in prange(image_height):  # pylint: disable=not-an-iterable
         c_imag = y_values[py]
 
-        for px in range(width):
+        for px in range(image_width):
             c_real = x_values[px]
 
             z_real = 0.0
@@ -59,16 +64,15 @@ def calculate_mandelbrot(width, height, max_iter, bounds):
 
 
 class Mandelbrot:
-    def __init__(self, width, height, max_iter):
+    def __init__(self, width: int, height: int, max_iter: int) -> None:
         self.width = width
         self.height = height
         self.max_iter = max_iter
 
-    def generate_image(self, bounds):
+    def generate_image(self, bounds: tuple) -> Image.Image:
         iterations = calculate_mandelbrot(
             self.width, self.height, self.max_iter, bounds
         )
-
         palette = np.array(
             [
                 (0, 0, 255),
@@ -77,17 +81,15 @@ class Mandelbrot:
                 (255, 0, 0),
                 (255, 165, 0),
                 (255, 255, 0),
+                (255, 255, 255),
             ],
             dtype=np.float64,
         )
-
         escaped = iterations != self.max_iter
-
         image_array = np.zeros((self.height, self.width, 3), dtype=np.uint8)
 
         if np.any(escaped):
             escaped_values = iterations[escaped]
-
             minimum = escaped_values.min()
             maximum = escaped_values.max()
 
@@ -97,13 +99,9 @@ class Mandelbrot:
                 normalized = np.zeros_like(iterations)
 
             normalized = np.clip(normalized, 0.0, 1.0)
-
             palette_position = normalized * (len(palette) - 1)
-
             lower_index = np.floor(palette_position).astype(int)
-
             upper_index = np.minimum(lower_index + 1, len(palette) - 1)
-
             blend = palette_position - lower_index
 
             for channel in range(3):
@@ -111,7 +109,6 @@ class Mandelbrot:
                     palette[lower_index, channel] * (1.0 - blend)
                     + palette[upper_index, channel] * blend
                 )
-
                 image_array[:, :, channel] = np.where(escaped, colour, 0).astype(
                     np.uint8
                 )
@@ -120,13 +117,14 @@ class Mandelbrot:
 
 
 if __name__ == "__main__":
+    print("Generating Mandelbrot set...")
     # mandelbrot = Mandelbrot(width=16384, height=16384, max_iter=500)
-    mandelbrot = Mandelbrot(width=4096, height=4096, max_iter=500)
+    mandelbrot = Mandelbrot(width=1024 * 16, height=1024 * 16, max_iter=800)
+    print("Mandelbrot set initialised.")
     start_time = time.time()
-    img = mandelbrot.generate_image((-2, -1.5, 1, 1.5))
-    print(
-        f"Time taken to initialize Mandelbrot: {time.time() - start_time:.2f} seconds"
-    )
+    img = mandelbrot.generate_image((-2, 1.5, 3, 3))
 
-    # img.save("mandelbrot.png", "PNG")
-    img.show()
+    print(f"Time taken to generate Mandelbrot: {time.time() - start_time:.2f} seconds")
+
+    img.save("mandelbrot.png", "PNG")
+    # img.show()
