@@ -21,6 +21,9 @@ def calculate_mandelbrot(
     max_iter: int,
     bounds: tuple,
 ) -> np.ndarray:
+    """
+    Calculate the Mandelbrot set for a given image size and bounds.
+    """
     left, top, view_width, view_height = bounds
 
     iterations = np.full((image_height, image_width), max_iter, dtype=np.float64)
@@ -64,12 +67,17 @@ def calculate_mandelbrot(
 
 
 class Mandelbrot:
+    """
+    Class for rendering the Mandelbrot set.
+    """
+
     def __init__(self, width: int, height: int, max_iter: int) -> None:
         self.width = width
         self.height = height
         self.max_iter = max_iter
 
     def generate_image(self, bounds: tuple) -> Image.Image:
+        """This function generates the Mandelbrot set image based on the provided bounds."""
         iterations = calculate_mandelbrot(
             self.width, self.height, self.max_iter, bounds
         )
@@ -119,12 +127,15 @@ class Mandelbrot:
 if __name__ == "__main__":
     print("Generating Mandelbrot set...")
     # mandelbrot = Mandelbrot(width=16384, height=16384, max_iter=500)
-    mandelbrot = Mandelbrot(width=1024 * 16, height=1024 * 16, max_iter=800)
+    size = 8
+    mandelbrot = Mandelbrot(width=1024 * size, height=1024 * size, max_iter=100 * size)
     print("Mandelbrot set initialised.")
     start_time = time.time()
     img = mandelbrot.generate_image((-2, 1.5, 3, 3))
 
     print(f"Time taken to generate Mandelbrot: {time.time() - start_time:.2f} seconds")
+    start_time = time.time()
 
     img.save("mandelbrot.png", "PNG")
+    print(f"Time taken to save Mandelbrot: {time.time() - start_time:.2f} seconds")
     # img.show()
