@@ -6,6 +6,7 @@ Zn = (Zn-1)^2 + C
 C is in the form a + bi, where a and b are real numbers.
 """
 
+import time
 import math
 import numpy as np
 
@@ -148,15 +149,13 @@ class Mandelbrot:
 
 
 if __name__ == "__main__":
-    mandelbrot = Mandelbrot(
-        width=5000,
-        height=5000,
-        max_iter=100
-    )
-
+    #mandelbrot = Mandelbrot(width=16384, height=16384, max_iter=500)
+    mandelbrot = Mandelbrot(width=4096, height=4096, max_iter=500)
+    start_time = time.time()
     img = mandelbrot.generate_image(
         (-2, -1.5, 1, 1.5)
     )
+    print(f"Time taken to initialize Mandelbrot: {time.time() - start_time:.2f} seconds")
 
-    img.save("mandelbrot.png", "PNG")
+    #img.save("mandelbrot.png", "PNG")
     img.show()
