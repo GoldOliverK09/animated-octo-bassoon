@@ -1,116 +1,162 @@
 """
 Contains functions for generating the Mandelbrot set.
 
-Zn = (Zn-1)^2 + C where C is in the form of a + bi where a, b are real numbers
+Zn = (Zn-1)^2 + C
 
-from PIL import Image
-
-img = Image.new( 'RGB', (255,255), "black") # Create a new black image
-pixels = img.load() # Create the pixel map
-for i in range(img.size[0]):    # For every pixel:
-    for j in range(img.size[1]):
-        pixels[i,j] = (i, j, 100) # Set the colour accordingly
-
-img.show()
+C is in the form a + bi, where a and b are real numbers.
 """
 
 import math
-
 import numpy as np
-from PIL import Image
 
-# from matplotlib import pyplot as plt
-from numba import njit
+from PIL import Image
+from numba import njit, prange
+
+
+@njit(parallel=True, cache=True)
+def calculate_mandelbrot(width, height, max_iter, bounds):
+    x_min, y_min, x_max, y_max = bounds
+
+    iterations = np.full(
+        (height, width),
+        max_iter,
+        dtype=np.float64
+    )
+
+    x_values = np.linspace(x_min, x_max, width)
+    y_values = np.linspace(y_min, y_max, height)
+
+    for py in prange(height):
+        c_imag = y_values[py]
+
+        for px in range(width):
+            c_real = x_values[px]
+
+            z_real = 0.0
+            z_imag = 0.0
+
+            for iteration in range(max_iter):
+                z_real_squared = z_real * z_real
+                z_imag_squared = z_imag * z_imag
+
+                new_z_real = (
+                    z_real_squared
+                    - z_imag_squared
+                    + c_real
+                )
+
+                new_z_imag = (
+                    2.0 * z_real * z_imag
+                    + c_imag
+                )
+
+                z_real = new_z_real
+                z_imag = new_z_imag
+
+                magnitude_squared = (
+                    z_real * z_real
+                    + z_imag * z_imag
+                )
+
+                if magnitude_squared > 4.0:
+                    magnitude = math.sqrt(magnitude_squared)
+
+                    smooth_iteration = (
+                        iteration
+                        + 1
+                        - math.log(math.log(magnitude))
+                        / math.log(2.0)
+                    )
+
+                    iterations[py, px] = smooth_iteration
+                    break
+
+    return iterations
 
 
 class Mandelbrot:
-    """Represents the Mandelbrot set."""
-
-    def __init__(self, width: int, height: int, max_iter: int = 50) -> None:
+    def __init__(self, width, height, max_iter):
         self.width = width
         self.height = height
         self.max_iter = max_iter
 
-    def get_point(self, x: float, y: float) -> float:
-        """Returns a smooth escape value for a point."""
-
-        c = complex(x, y)
-        z = 0
-
-        for iteration in range(self.max_iter):
-
-            magnitude_squared = z.real * z.real + z.imag * z.imag
-
-            if magnitude_squared > 4:
-                magnitude = math.sqrt(magnitude_squared)
-
-                smooth_iteration = (
-                    iteration + 1 - math.log(math.log(magnitude)) / math.log(2)
-                )
-
-                return smooth_iteration
-
-            z = z**2 + c
-
-        return self.max_iter
-
-    def generate_image(self, bounds: tuple[float, float, float, float]) -> Image.Image:
-        """Generates an image of the Mandelbrot set within the given bounds."""
-
-        x = bounds[0] + (np.arange(self.width) / self.width) * (bounds[2] - bounds[0])
-        y = bounds[1] + (np.arange(self.height) / self.height) * (bounds[3] - bounds[1])
-        c = x[np.newaxis, :] + 1j * y[:, np.newaxis]
-        z = np.zeros_like(c)
-        iterations = np.full(c.shape, self.max_iter, dtype=float)
-        active = np.ones(c.shape, dtype=bool)
-
-        for iteration in range(self.max_iter):
-            magnitude_squared = z.real * z.real + z.imag * z.imag
-            escaped = active & (magnitude_squared > 4)
-
-            if escaped.any():
-                magnitude = np.sqrt(magnitude_squared[escaped])
-                iterations[escaped] = (
-                    iteration + 1 - np.log(np.log(magnitude)) / np.log(2)
-                )
-                active[escaped] = False
-
-            if not active.any():
-                break
-
-            print("Iteration:", iteration, "Active points:", np.sum(active))
-
-            z[active] = z[active] ** 2 + c[active]
-
-        colours = np.array(
-            (
-                (0, 0, 255),
-                (0, 255, 255),
-                (180, 0, 255),
-                (255, 0, 0),
-                (255, 165, 0),
-                (255, 255, 0),
-            )
+    def generate_image(self, bounds):
+        iterations = calculate_mandelbrot(
+            self.width,
+            self.height,
+            self.max_iter,
+            bounds
         )
-        escaped = iterations != self.max_iter
-        t = (iterations[escaped] * 0.08) % 1
-        position = t * (len(colours) - 1)
-        start = position.astype(int)
-        blend = position - start
-        pixels = np.zeros((*c.shape, 3), dtype=np.uint8)
-        pixels[escaped] = (
-            colours[start]
-            + (colours[np.minimum(start + 1, len(colours) - 1)] - colours[start])
-            * blend[:, None]
-        ).astype(np.uint8)
 
-        return Image.fromarray(pixels, mode="RGB")
+        palette = np.array([
+            (0, 0, 255),
+            (0, 255, 255),
+            (180, 0, 255),
+            (255, 0, 0),
+            (255, 165, 0),
+            (255, 255, 0)
+        ], dtype=np.float64)
+
+        escaped = iterations != self.max_iter
+
+        image_array = np.zeros(
+            (self.height, self.width, 3),
+            dtype=np.uint8
+        )
+
+        if np.any(escaped):
+            escaped_values = iterations[escaped]
+
+            minimum = escaped_values.min()
+            maximum = escaped_values.max()
+
+            if maximum > minimum:
+                normalized = (
+                    iterations - minimum
+                ) / (maximum - minimum)
+            else:
+                normalized = np.zeros_like(iterations)
+
+            normalized = np.clip(normalized, 0.0, 1.0)
+
+            palette_position = normalized * (len(palette) - 1)
+
+            lower_index = np.floor(
+                palette_position
+            ).astype(int)
+
+            upper_index = np.minimum(
+                lower_index + 1,
+                len(palette) - 1
+            )
+
+            blend = palette_position - lower_index
+
+            for channel in range(3):
+                colour = (
+                    palette[lower_index, channel] * (1.0 - blend)
+                    + palette[upper_index, channel] * blend
+                )
+
+                image_array[:, :, channel] = np.where(
+                    escaped,
+                    colour,
+                    0
+                ).astype(np.uint8)
+
+        return Image.fromarray(image_array, "RGB")
 
 
 if __name__ == "__main__":
-    mandelbrot = Mandelbrot(1024, 1024, 100)
-    img = mandelbrot.generate_image((-2, -1.5, 1, 1.5))
-    # img.save("mandelbrot.png", "PNG")
-    # plt.imshow(img, interpolation="bilinear")
-    # plt.show()
+    mandelbrot = Mandelbrot(
+        width=5000,
+        height=5000,
+        max_iter=100
+    )
+
+    img = mandelbrot.generate_image(
+        (-2, -1.5, 1, 1.5)
+    )
+
+    img.save("mandelbrot.png", "PNG")
     img.show()
