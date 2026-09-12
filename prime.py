@@ -18,75 +18,56 @@ def is_prime(num: int) -> bool:
     return True
 
 
-def generate_spiral(size):
+def iter_spiral(count, radial_scale=1.0):
+    """Yield polar coordinates along a golden-angle scatter spiral."""
+    golden_angle = math.pi * (3 - math.sqrt(5))
 
-    x, y = 0, 0
-    spiral_coordinates = [(x, y)]
+    for index in range(count):
+        angle = index * golden_angle
+        radius = radial_scale * math.sqrt(index)
+        yield angle, radius
 
-    directions = [(1, 0), (0, 1), (-1, 0), (0, -1)]  # right  # up  # left  # down
 
-    direction = 0
-    step_length = 1
-
-    while len(spiral_coordinates) < size:
-
-        for _ in range(2):
-
-            dx, dy = directions[direction]
-
-            for _ in range(step_length):
-
-                if len(spiral_coordinates) >= size:
-                    break
-
-                x += dx
-                y += dy
-
-                spiral_coordinates.append((x, y))
-
-            direction = (direction + 1) % 4
-
-        step_length += 1
-
-    return spiral_coordinates
+def generate_spiral(count):
+    return list(iter_spiral(count))
 
 
 if __name__ == "__main__":
 
-    # Generate primes
-    primes: set[int] = set()
-
-    for n in range(2, 100000):
-        if is_prime(n):
-            primes.add(n)
-
-    # Generate spiral coordinates
-    coordinates = generate_spiral(10000)
-
-    # Connect numbers to coordinates
-    prime_coordinates = [
-        coordinate
-        for number, coordinate in enumerate(coordinates, start=1)
-        if number in primes
-    ]
-
-    angles = [math.atan2(y, x) for x, y in coordinates]
-    radii = [math.hypot(x, y) for x, y in coordinates]
-    prime_angles = [math.atan2(y, x) for x, y in prime_coordinates]
-    prime_radii = [math.hypot(x, y) for x, y in prime_coordinates]
+    point_count = 500_000
+    initial_view_radius = 50
+    all_coordinates = []
+    prime_coordinates = []
 
     figure, axis = plt.subplots(figsize=(10, 10), subplot_kw={"projection": "polar"})
     polar_axis = cast(PolarAxes, axis)
-    #polar_axis.scatter(angles, radii, s=8, color="lightgray", label="All numbers")
-    polar_axis.scatter(
-        prime_angles,
-        prime_radii,
-        s=12,
-        color="crimson",
-        label="Prime numbers",
+    all_points = polar_axis.scatter([], [], s=1, color="lightgray", label="All numbers")
+    prime_points = polar_axis.scatter(
+        [], [], s=4, color="crimson", label="Prime numbers"
     )
-    polar_axis.set_theta_zero_location("E")
-    polar_axis.set_theta_direction(1)
-    polar_axis.set_title("Ulam Spiral on a Circular Grid", pad=20)
-    polar_axis.legend(loc="upper right", bbox_to_anchor=(1.2, 1.1))
+    polar_axis.grid(False)
+    polar_axis.set_xticks([])
+    polar_axis.set_yticks([])
+    polar_axis.spines["polar"].set_visible(False)
+    polar_axis.set_ylim(0, initial_view_radius)
+
+    # Show the empty plot before starting the expensive calculation.
+    plt.show(block=False)
+    plt.pause(0.1)
+
+    for number, polar_coordinate in enumerate(iter_spiral(point_count), start=1):
+        all_coordinates.append(polar_coordinate)
+
+        if is_prime(number):
+            prime_coordinates.append(polar_coordinate)
+
+        if number % 1_000 == 0 or number == point_count:
+            # all_points.set_offsets(all_coordinates)
+            prime_points.set_offsets(prime_coordinates)
+            current_radius = all_coordinates[-1][1] + 1
+            polar_axis.set_ylim(0, max(initial_view_radius, current_radius))
+            figure.canvas.draw_idle()
+            figure.canvas.flush_events()
+            plt.pause(0.001)
+
     plt.show()
